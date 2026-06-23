@@ -1,0 +1,7 @@
+apiVersion: v2
+name: novu
+description: Helm chart for running Novu with Redis and MongoDB on Kubernetes
+type: application
+icon: "https://assets.super.so/1e9f5a51-c4c6-4fca-b6e8-25fa0186f139/images/58e6ceab-767e-4623-bd7d-6b11442a89a2/Group_1321321858.png"
+version: 0.1.0
+appVersion: "3.17.0"

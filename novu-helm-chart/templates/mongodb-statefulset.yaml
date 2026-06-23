@@ -1,0 +1,157 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "novu.fullname" . }}-mongodb
+  labels:
+    {{- include "novu.labels" . | nindent 4 }}
+    app.kubernetes.io/component: mongodb
+spec:
+  serviceName: {{ include "novu.fullname" . }}-mongodb-headless
+  replicas: {{ .Values.mongodb.replicas }}
+  selector:
+    matchLabels:
+      {{- include "novu.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: mongodb
+  template:
+    metadata:
+      annotations:
+        {{- toYaml .Values.podAnnotations | nindent 8 }}
+      labels:
+        {{- include "novu.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: mongodb
+    spec:
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if .Values.mongodb.replicaSet.enabled }}
+      initContainers:
+        - name: prepare-keyfile
+          image: "{{ .Values.mongodb.image.repository }}:{{ .Values.mongodb.image.tag }}"
+          imagePullPolicy: {{ .Values.mongodb.image.pullPolicy }}
+          command:
+            - sh
+            - -c
+            - |
+              set -eu
+              cp /key-src/keyfile /keyfile/keyfile
+              chmod 400 /keyfile/keyfile
+              chown mongodb:mongodb /keyfile/keyfile
+          volumeMounts:
+            - name: mongodb-key-src
+              mountPath: /key-src
+              readOnly: true
+            - name: mongodb-keyfile
+              mountPath: /keyfile
+      {{- end }}
+      containers:
+        - name: mongodb
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.mongodb.image.repository }}:{{ .Values.mongodb.image.tag }}"
+          imagePullPolicy: {{ .Values.mongodb.image.pullPolicy }}
+          {{- if .Values.mongodb.replicaSet.enabled }}
+          args:
+            - --replSet
+            - {{ .Values.mongodb.replicaSet.name | quote }}
+            - --keyFile
+            - /etc/mongodb-keyfile/keyfile
+            - --bind_ip_all
+          {{- end }}
+          ports:
+            - name: mongodb
+              containerPort: {{ .Values.mongodb.service.port }}
+              protocol: TCP
+          env:
+            - name: MONGO_INITDB_ROOT_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "novu.fullname" . }}-secret
+                  key: MONGO_INITDB_ROOT_USERNAME
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "novu.fullname" . }}-secret
+                  key: MONGO_INITDB_ROOT_PASSWORD
+          livenessProbe:
+            exec:
+              command:
+                - mongosh
+                - --quiet
+                - --username
+                - $(MONGO_INITDB_ROOT_USERNAME)
+                - --password
+                - $(MONGO_INITDB_ROOT_PASSWORD)
+                - --authenticationDatabase
+                - admin
+                - --eval
+                - db.adminCommand('ping').ok
+            initialDelaySeconds: 40
+            periodSeconds: 20
+            timeoutSeconds: 10
+            failureThreshold: 5
+          readinessProbe:
+            exec:
+              command:
+                - mongosh
+                - --quiet
+                - --username
+                - $(MONGO_INITDB_ROOT_USERNAME)
+                - --password
+                - $(MONGO_INITDB_ROOT_PASSWORD)
+                - --authenticationDatabase
+                - admin
+                - --eval
+                - db.adminCommand('ping').ok
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 5
+          volumeMounts:
+            - name: data
+              mountPath: /data/db
+            {{- if .Values.mongodb.replicaSet.enabled }}
+            - name: mongodb-keyfile
+              mountPath: /etc/mongodb-keyfile
+              readOnly: true
+            {{- end }}
+          resources:
+            {{- toYaml .Values.mongodb.resources | nindent 12 }}
+      {{- if .Values.mongodb.replicaSet.enabled }}
+      volumes:
+        - name: mongodb-key-src
+          secret:
+            secretName: {{ include "novu.fullname" . }}-secret
+            defaultMode: 0400
+            items:
+              - key: MONGODB_REPLICA_SET_KEY
+                path: keyfile
+        - name: mongodb-keyfile
+          emptyDir: {}
+      {{- end }}
+      {{- $nodeSelector := default .Values.nodeSelector .Values.mongodb.nodeSelector }}
+      {{- with $nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- $affinity := default .Values.affinity .Values.mongodb.affinity }}
+      {{- with $affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- $tolerations := default .Values.tolerations .Values.mongodb.tolerations }}
+      {{- with $tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        labels:
+          {{- include "novu.labels" . | nindent 10 }}
+          app.kubernetes.io/component: mongodb
+      spec:
+        accessModes:
+          {{- toYaml .Values.mongodb.persistence.accessModes | nindent 10 }}
+        storageClassName: {{ include "novu.storageClassName" . | quote }}
+        resources:
+          requests:
+            storage: {{ .Values.mongodb.persistence.size | quote }}

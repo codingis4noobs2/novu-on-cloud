@@ -1,0 +1,20 @@
+{{- range $name, $service := .Values.services }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "novu.fullname" $ }}-{{ $name }}
+  labels:
+    {{- include "novu.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $name }}
+spec:
+  type: {{ $service.service.type }}
+  ports:
+    - name: http
+      port: {{ $service.service.port }}
+      targetPort: http
+      protocol: TCP
+  selector:
+    {{- include "novu.selectorLabels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $name }}
+{{- end }}

@@ -1,0 +1,3 @@
+#node_role: master
+cluster_token: "super-secret-cluster-token"
+k3s_version: "v1.35.5+k3s1"

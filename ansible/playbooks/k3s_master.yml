@@ -1,0 +1,116 @@
+---
+- name: Configure k3s control plane
+  hosts: k3s_master
+  become: true
+
+  vars:
+    kubectl_user: ssm-user
+    kubectl_home: "/home/{{ kubectl_user }}"
+
+  tasks:
+    - name: Download k3s installation script
+      ansible.builtin.get_url:
+        url: https://get.k3s.io
+        dest: /tmp/k3s_install.sh
+        mode: "0700"
+
+    - name: Install k3s server
+      ansible.builtin.shell: |
+        K3S_TOKEN="{{ cluster_token }}" \
+        INSTALL_K3S_VERSION="{{ k3s_version }}" \
+        INSTALL_K3S_EXEC="server \
+          --node-name {{ inventory_hostname }} \
+          --node-taint node-role.kubernetes.io/control-plane=true:NoSchedule" \
+        /tmp/k3s_install.sh
+      args:
+        creates: /usr/local/bin/k3s
+
+    - name: Wait for node to become ready
+      ansible.builtin.command: kubectl get nodes
+      register: nodes
+      retries: 20
+      delay: 10
+      until: nodes.rc == 0
+      changed_when: false
+
+    - name: Create kube config directory
+      ansible.builtin.file:
+        path: "{{ kubectl_home }}/.kube"
+        state: directory
+        owner: "{{ kubectl_user }}"
+        group: "{{ kubectl_user }}"
+        mode: "0700"
+
+    - name: Copy k3s kubeconfig to user home
+      ansible.builtin.copy:
+        src: /etc/rancher/k3s/k3s.yaml
+        dest: "{{ kubectl_home }}/.kube/config"
+        remote_src: true
+        owner: "{{ kubectl_user }}"
+        group: "{{ kubectl_user }}"
+        mode: "0600"
+
+    - name: Configure KUBECONFIG environment variable
+      ansible.builtin.lineinfile:
+        path: "{{ kubectl_home }}/.profile"
+        line: 'export KUBECONFIG=$HOME/.kube/config'
+        create: true
+        owner: "{{ kubectl_user }}"
+        group: "{{ kubectl_user }}"
+        mode: "0644"
+
+    - name: Configure KUBECONFIG environment variable
+      ansible.builtin.lineinfile:
+        path: "{{ kubectl_home }}/.bashrc"
+        line: 'export KUBECONFIG=$HOME/.kube/config'
+        create: true
+        owner: "{{ kubectl_user }}"
+        group: "{{ kubectl_user }}"
+        mode: "0644"
+
+    - name: Download Helm install script
+      ansible.builtin.get_url:
+        url: https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-4
+        dest: /tmp/get_helm.sh
+        mode: '0700'
+
+    - name: Run Helm install script
+      ansible.builtin.command: /tmp/get_helm.sh
+      args:
+        creates: /usr/local/bin/helm
+
+    # Optional
+    - name: Install ArgoCD and ArgoCD CLI
+      block:
+        - name: Create Argo CD namespace
+          ansible.builtin.shell: kubectl create ns argocd || true
+          changed_when: false
+
+        - name: Install Argo CD
+          ansible.builtin.shell: >
+            kubectl apply
+            -n argocd
+            --server-side
+            --force-conflicts
+            -f https://raw.githubusercontent.com/argoproj/argo-cd/v3.3.12/manifests/install.yaml
+          register: argocd_install
+          changed_when: "'configured' in argocd_install.stdout or 'created' in argocd_install.stdout"
+
+        - name: Download ArgoCD CLI
+          ansible.builtin.get_url:
+            url: https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+            dest: /tmp/argocd-linux-amd64
+            mode: "0755"
+
+        - name: Install ArgoCD CLI
+          ansible.builtin.copy:
+            src: /tmp/argocd-linux-amd64
+            dest: /usr/local/bin/argocd
+            mode: "0555"
+            remote_src: true
+          become: true
+
+        - name: Remove temporary file
+          ansible.builtin.file:
+            path: /tmp/argocd-linux-amd64
+            state: absent

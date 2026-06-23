@@ -1,0 +1,74 @@
+{{- if .Values.mongodb.replicaSet.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "novu.fullname" . }}-mongodb-rs-init
+  labels:
+    {{- include "novu.labels" . | nindent 4 }}
+    app.kubernetes.io/component: mongodb
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 8
+  template:
+    metadata:
+      labels:
+        {{- include "novu.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: mongodb-rs-init
+    spec:
+      restartPolicy: OnFailure
+      {{- $nodeSelector := default .Values.mongodb.nodeSelector .Values.mongodb.initJob.nodeSelector }}
+      {{- with $nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- $affinity := default .Values.mongodb.affinity .Values.mongodb.initJob.affinity }}
+      {{- with $affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- $tolerations := default .Values.mongodb.tolerations .Values.mongodb.initJob.tolerations }}
+      {{- with $tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: rs-init
+          image: "{{ .Values.mongodb.image.repository }}:{{ .Values.mongodb.image.tag }}"
+          imagePullPolicy: {{ .Values.mongodb.image.pullPolicy }}
+          env:
+            - name: MONGO_INITDB_ROOT_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "novu.fullname" . }}-secret
+                  key: MONGO_INITDB_ROOT_USERNAME
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "novu.fullname" . }}-secret
+                  key: MONGO_INITDB_ROOT_PASSWORD
+          command:
+            - sh
+            - -c
+            - |
+              set -eu
+              primary="{{ include "novu.fullname" . }}-mongodb-0.{{ include "novu.fullname" . }}-mongodb-headless:{{ .Values.mongodb.service.port }}"
+              second="{{ include "novu.fullname" . }}-mongodb-1.{{ include "novu.fullname" . }}-mongodb-headless:{{ .Values.mongodb.service.port }}"
+              until mongosh --quiet --host "$primary" --username "$MONGO_INITDB_ROOT_USERNAME" --password "$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin --eval "db.adminCommand('ping').ok"; do
+                sleep 5
+              done
+              mongosh --quiet --host "$primary" --username "$MONGO_INITDB_ROOT_USERNAME" --password "$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin --eval "
+                try {
+                  rs.status().ok
+                } catch (e) {
+                  rs.initiate({
+                    _id: '{{ .Values.mongodb.replicaSet.name }}',
+                    members: [
+                      { _id: 0, host: '$primary' },
+                      { _id: 1, host: '$second' }
+                    ]
+                  })
+                }
+              "
+{{- end }}

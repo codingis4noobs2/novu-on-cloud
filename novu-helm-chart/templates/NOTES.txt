@@ -1,0 +1,23 @@
+Novu has been successfully installed.
+
+=== Internal Kubernetes Services ===
+
+API:
+http://{{ include "novu.fullname" . }}-api:{{ .Values.services.api.service.port }}
+
+WebSocket:
+http://{{ include "novu.fullname" . }}-ws:{{ .Values.services.ws.service.port }}
+
+Worker:
+http://{{ include "novu.fullname" . }}-worker:{{ .Values.services.worker.service.port }}
+
+Dashboard:
+http://{{ include "novu.fullname" . }}-dashboard:{{ .Values.services.dashboard.service.port }}
+
+=== Stateful Services ===
+
+Redis:
+{{ include "novu.fullname" . }}-redis-headless:{{ .Values.redis.service.port }}
+
+MongoDB Replica Set:
+{{ include "novu.fullname" . }}-mongodb-headless:{{ .Values.mongodb.service.port }}

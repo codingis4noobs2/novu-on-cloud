@@ -1,288 +1,287 @@
+# Hosting Novu on AWS Cloud
+
 <a href="https://go.novu.co/github?utm_campaign=readme-logo" target="_blank" rel="noopener noreferrer">
   <img alt="Novu Logo" src=".github/assets/novu-logo.svg" width="100%"/>
 </a>
 
-<br/>
-<br/>
-<p align="center">
-  <a href="https://www.producthunt.com/products/novu" target="_blank" rel="noopener noreferrer"
+This project provisions a highly available self-hosted Novu deployment on AWS using Terraform, Ansible, K3s, and Helm. The infrastructure is designed to automate the complete deployment lifecycle, from network provisioning and Kubernetes cluster creation to application installation, ingress configuration, TLS with AWS Certificate Manager, and persistent storage.
+
+> **Important**
 >
-    <img src="https://img.shields.io/badge/Product%20Hunt-Golden%20Kitty%20Award%202023-yellow" alt="Product Hunt">
-  </a>
-  <a href="https://news.ycombinator.com/item?id=38419513" target="_blank" rel="noopener noreferrer"
-><img src="https://img.shields.io/badge/Hacker%20News-%231-%23FF6600" alt="Hacker News"></a>
-  <a href="https://www.npmjs.com/package/@novu/react" target="_blank" rel="noopener noreferrer"
+> This project creates real AWS resources and will incur charges on your AWS account. Before deploying, ensure that you understand the infrastructure being created and the associated costs.
 >
-    <img src="https://img.shields.io/npm/v/@novu/react" alt="NPM">
-  </a>
-  <a href="https://www.npmjs.com/package/@novu/js" target="_blank" rel="noopener noreferrer"
+> If you are using this repository for learning or experimentation, i strongly recommended to destroy all provisioned resources when you are finished:
 >
-    <img src="https://img.shields.io/npm/dm/@novu/js" alt="npm downloads">
-  </a>
-</p>
+> ```bash
+> terraform destroy
+> ```
+>
+> Failure to clean up resources such as EC2 instances, EBS volumes, NAT Gateways, Load Balancers, and Route 53 hosted zones will definitely result in unexpected AWS charges.
 
-<h1 align="center">
- The open-source communication infrastructure for agents and products
-</h1>
+## Architecture Diagram
+Will upload soon!
 
-<div align="center">
-  One API and one unified conversation model to connect your <strong>products</strong> and your <strong>agents</strong> to every channel your users live on — Inbox, Email, SMS, Push, Chat, Slack, Microsoft Teams, Telegram, and more.
-</div>
+## Prerequisites
 
-<p align="center">
-  <br />
-  <a href="https://go.novu.co/github?utm_source=github&utm_medium=readme&utm_campaign=learn-more-link" rel="dofollow"><strong>Learn More »</strong></a>
-  <br />
+Before deploying the infrastructure, install the following tools on your local(or remote) machine:
 
-<br/>
-  <a href="https://github.com/novuhq/novu/issues/new?assignees=&labels=type%3A+bug&template=bug_report.yml&title=%F0%9F%90%9B+Bug+Report%3A+" target="_blank" rel="noopener noreferrer"
->Report a bug</a>
-  ·
-  <a href="https://docs.novu.co" target="_blank" rel="noopener noreferrer"
->Docs</a>
-  ·
-  <a href="https://go.novu.co/github?utm_campaign=readme_website" target="_blank" rel="noopener noreferrer"
->Website</a>
-  ·
-  <a href="https://discord.novu.co" target="_blank" rel="noopener noreferrer"
->Join our Discord</a>
-  ·
-  <a href="https://go.novu.co/changelog" target="_blank" rel="noopener noreferrer"
->Changelog</a>
-  ·
-  <a href="https://go.novu.co/roadmap" target="_blank" rel="noopener noreferrer"
->Roadmap</a>
-  ·
-  <a href="https://twitter.com/novuhq" target="_blank" rel="noopener noreferrer"
->X</a>
-  ·
-  <a href="https://go.novu.co/contact?utm_source=github&utm_medium=readme&utm_campaign=contact-us-link" target="_blank" rel="noopener noreferrer"
->Contact us</a>
+1. AWS CLI
+   https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html
 
-Software is becoming more conversational, and user expectations are rising with it. People no longer want static, irrelevant notifications they glance at and forget, they want to engage, ask questions, and go deeper. Instead of a one-way report dropped in their inbox, they expect a thread they can explore: follow up on a metric, drill into an anomaly, or continue a conversation right where they left off. That shift, from broadcast to meaningful dialog is what Novu's communication infrastructure is built for.
+2. Terraform
+   https://developer.hashicorp.com/terraform/install
 
-## ⭐️ Why Novu?
- 
-Every product and every agent eventually needs to talk to people, across the channels those people already use. Novu is the open-source layer that handles that communication for you, so you don't rebuild Inbox feeds, provider integrations, and channel webhooks from scratch every time.
- 
-There are two ways to build with Novu, and they share the same foundation: a single API and a unified conversation model.
- 
-- **Communication infrastructure for products** — Send notifications across Inbox/In-App, Email, SMS, Push, and Chat through one API, with workflows, digests, and an embeddable `<Inbox />` component.
-- **Agent Communication Infrastructure (ACI)** — Connect any agent you've already built to any communication channel: Slack, Microsoft Teams, Telegram, WhatsApp, email through one conversation model.
+3. Ansible
+   https://docs.ansible.com/projects/ansible/latest/installation_guide/index.html
 
-## 🚀 Getting Started
+> **Note**
+>
+> This option is risky if your remote environment is shared, then i would suggest using the aws console terminal instead. Use CloudShell which provides temporary credentials. This avoids the need to create and manage long-lived IAM access keys. Install terraform and ansible on it too. Use `aws login` for temporary credentials.
 
-[Create a free account](https://go.novu.co/dashboard?utm_source=github&utm_medium=readme&utm_campaign=create-free-account-link) and follow the instructions on the dashboard.
+## Deploying the Infrastructure
 
-## 📚 Table of contents
- 
-- [Why Novu?](#️-why-novu)
-- [Communication infrastructure for products](#-communication-infrastructure-for-products)
-- [Agent Communication Infrastructure (ACI)](#-agent-communication-infrastructure-aci)
-- [Getting Started](#-getting-started)
-- [Embeddable Inbox and Preferences](#embeddable-inbox-component)
-- [Providers](#providers)
+### 1. Create an S3 Bucket
 
-## 📬 Communication infrastructure for products
- 
-The notification platform that turns complex multi-channel delivery into a single component. Built for developers, designed for growth, powered by open source.
- 
-Novu provides a unified API to send notifications through multiple channels — **Inbox/In-App, Push, Email, SMS, and Chat**. Create custom workflows, define per-channel conditions, and let Novu deliver each notification in the most effective way, without stitching together a provider for every channel yourself.
- 
-- One API for all messaging providers
-- Embeddable, real-time `<Inbox />` component
-- Notification workflow engine with branching and conditions
-- Digest engine to batch multiple notifications into a single message
-- No-code email editor
-- Embeddable preferences component so users control their own notifications
+Create an S3 bucket using either the AWS Management Console or AWS CLI. This bucket will be used to store the Terraform state file and lock file.
 
-## 🤖 Agent Communication Infrastructure (ACI)
- 
-> **You build the agent. Novu gives it a voice.**
- 
-ACI is a complete suite for companies already building agents that need to talk to users on real communication channels. It connects your agent to any channel and abstracts away the quirks of each platform behind a single, unified conversation model.
- 
-Novu handles the plumbing in both directions: it receives inbound messages from each channel, normalizes them into one consistent shape, routes them to your agent, and sends your agent's responses back out, so you integrate once instead of building and maintaining a webhook handler per platform.
- 
-- **Unified conversation model** — one consistent model across every channel, instead of per-platform message formats and webhook quirks
-- **Bidirectional messaging** — receive user messages and send agent replies through the same layer
-- **Channel integrations** — Slack, Microsoft Teams, Telegram, WhatsApp, Email, and an In-App Inbox for agents
-- **Bring your own agent** — works with whatever you've built, whether that's Claude Managed Agents, AI SDK, LangGraph, or a custom stack; Novu doesn't constrain your agent logic
-- **Best practices built in** — conversation threading, reactions, channel-aware formatting, actions and a single integration surface
-Novu connects the agent to the world, it is not the agent itself.
+### 2. Configure the Terraform Backend
 
-### Want to see ACI in action?
-We have built [Novu Connect](https://novu.co/connect) to showcase the power of ACI, build on integrate an existing Claude Managed Agent as a teammate in Slack, Telegram, or Email in less than 2 minutes. 
+Navigate to the `terraform/` directory and open `backend.tf`.
 
-Try it now:
-```
-npx novu@latest connect
+Update the bucket name to match the S3 bucket you created in the previous step.
+
+The backend stores:
+
+* Terraform state (`terraform.tfstate`)
+* Terraform lock file (used to prevent concurrent `apply` or `destroy` operations)
+
+### 3. Review Infrastructure Configuration
+
+Open `terraform.tfvars` and review the default values.
+
+You may customize the infrastructure configuration, including instance types, networking, cluster sizing, and other deployment settings according to your requirements.
+
+Once done run `terraform init` from the `terraform/` directory.
+
+### 4. Generate an Execution Plan
+
+From the `terraform/` directory, run:
+
+```bash
+terraform plan
 ```
 
-## Embeddable Inbox component
+Review the proposed infrastructure carefully to understand which AWS resources will be created.
 
-Using the Novu API and admin panel, you can easily add a real-time notification center to your web app without building it yourself. You can use our [React](https://docs.novu.co/inbox/react/get-started?utm_source=github&utm_medium=readme&utm_campaign=react-starter-link), or build your own via our API and SDK. React native, Vue, and Angular are coming soon.
+### 5. Provision the Infrastructure
 
-<div align="center">
-<img width="4800" height="2700" alt="Novu's Embeddable Inbox components" src="https://github.com/user-attachments/assets/00224c75-7ed0-4e19-b6fd-2a0bdced6258" />
+If the plan looks correct, deploy the infrastructure:
 
-Read more about how to add a [notification center Inbox](https://docs.novu.co/inbox/react/get-started?utm_source=github&utm_medium=readme&utm_campaign=read-more-react-link) to your app.
+```bash
+terraform apply
+```
 
-</div>
+Terraform will provision all required AWS resources, including networking, compute instances, security groups, IAM resources, and supporting infrastructure required for the Kubernetes cluster.
 
-## Providers
+> **Note**
+> Incase you get Error: waiting for EC2 NAT Gateway (nat-xxxxxxxxxxxxxxx) create: unexpected state 'failed', wanted target 'available'. last error: InvalidAllocationID.NotFound: Elastic IP address [eipalloc-xxxxxxxxxxxxxxx] could not be associated with this NAT gateway
 
-Novu provides a single API to manage providers across multiple channels with a simple-to-use API and UI interface.
+Then run `terraform apply --replace="aws_nat_gateway.main[0]"`
 
-Expand a channel below to browse supported providers.
+### 6. Install the AWS Session Manager Plugin
 
-<details>
-<summary><strong>💌 Email</strong> (19 providers)</summary>
+Install the AWS Session Manager Plugin for your operating system:
 
-| Provider |
-| --- |
-| [Amazon SES](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/email/ses) |
-| [Braze](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/email/braze) |
-| [Brevo](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/email/brevo) |
-| [Custom SMTP](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/email/nodemailer) |
-| [Email Webhook](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/email/email-webhook) |
-| [Email.js](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/email/emailjs) |
-| [Infobip](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/email/infobip) |
-| [MailerSend](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/email/mailersend) |
-| [Mailgun](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/email/mailgun) |
-| [Mailjet](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/email/mailjet) |
-| [Mailtrap](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/email/mailtrap) |
-| [Mandrill](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/email/mandrill) |
-| [Netcore](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/email/netcore) |
-| [Outlook 365](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/email/outlook365) |
-| [Plunk](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/email/plunk) |
-| [Postmark](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/email/postmark) |
-| [Resend](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/email/resend) |
-| [SendGrid](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/email/sendgrid) |
-| [SparkPost](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/email/sparkpost) |
+https://docs.aws.amazon.com/systems-manager/latest/userguide/install-plugin-debian-and-ubuntu.html
 
-</details>
+This plugin enables interactive shell access to EC2 instances through AWS Systems Manager (SSM).
 
-<details>
-<summary><strong>📞 SMS</strong> (37 providers)</summary>
+### 7. Verify SSM Connectivity
 
-| Provider |
-| --- |
-| [46elks](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/sms/forty-six-elks) |
-| [Africa's Talking](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/sms/africas-talking) |
-| [Afro SMS](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/sms/afro-sms) |
-| [Amazon SNS](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/sms/sns) |
-| [Azure SMS](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/sms/azure-sms) |
-| [Bandwidth](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/sms/bandwidth) |
-| [Brevo SMS](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/sms/brevo-sms) |
-| [Bulk SMS](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/sms/bulk-sms) |
-| [Burst SMS](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/sms/burst-sms) |
-| [Clickatell](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/sms/clickatell) |
-| [ClickSend](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/sms/clicksend) |
-| [CM Telecom](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/sms/cm-telecom) |
-| [Eazy SMS](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/sms/eazy-sms) |
-| [Firetext](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/sms/firetext) |
-| [Generic SMS](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/sms/generic-sms) |
-| [Gupshup](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/sms/gupshup) |
-| [iMedia](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/sms/imedia) |
-| [Infobip](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/sms/infobip) |
-| [iSend SMS](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/sms/isend-sms) |
-| [iSendPro SMS](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/sms/isendpro-sms) |
-| [Kannel](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/sms/kannel) |
-| [Maqsam](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/sms/maqsam) |
-| [MessageBird](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/sms/messagebird) |
-| [Mobishastra](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/sms/mobishastra) |
-| [Plivo](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/sms/plivo) |
-| [RingCentral](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/sms/ring-central) |
-| [Sendchamp](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/sms/sendchamp) |
-| [SimpleTexting](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/sms/simpletexting) |
-| [Sinch](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/sms/sinch) |
-| [SMS Central](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/sms/sms-central) |
-| [SMS77](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/sms/sms77) |
-| [SMSMode](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/sms/smsmode) |
-| [Telnyx](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/sms/telnyx) |
-| [Termii](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/sms/termii) |
-| [Twilio](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/sms/twilio) |
-| [Unifonic](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/sms/unifonic) |
-| [Vonage](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/sms/nexmo) |
+After the infrastructure has been provisioned, open the AWS Management Console and navigate to:
 
-</details>
+**EC2 → Instance → Connect -> SSM Session Manager**
 
-<details>
-<summary><strong>📱 Push</strong> (8 providers)</summary>
+Verify that all cluster nodes appear as **Online**.
 
-| Provider |
-| --- |
-| [APNS](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/push/apns) |
-| [App.io](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/push/appio) |
-| [Expo](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/push/expo) |
-| [FCM](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/push/fcm) |
-| [OneSignal](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/push/one-signal) |
-| [Push Webhook](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/push/push-webhook) |
-| [Pusher Beams](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/push/pusher-beams) |
-| [Pushpad](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/push/pushpad) |
+If a node does not register with SSM(usually an error like: SSM Agent unable to acquire credentials: <error>unexpected error getting instance profile role credentials or calling UpdateInstanceInformation. Skipping default host management fallback: retrieved credentials failed to report to ssm. Error: RequestError: send request failed</error>
+), a simple instance reboot is usually sufficient:
 
-</details>
+```bash
+aws ec2 reboot-instances --instance-ids <instance-id>
+```
 
-<details>
-<summary><strong>💬 Chat</strong> (12 providers)</summary>
+or use the EC2 Console.
 
-| Provider |
-| --- |
-| [Chat Webhook](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/chat/chat-webhook) |
-| [Discord](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/chat/discord) |
-| [GetStream](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/chat/getstream) |
-| [Grafana OnCall](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/chat/grafana-on-call) |
-| [Mattermost](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/chat/mattermost) |
-| [Microsoft Teams](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/chat/msTeams) |
-| [Rocket.Chat](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/chat/rocket-chat) |
-| [Ryver](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/chat/ryver) |
-| [Slack](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/chat/slack) |
-| [Telegram](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/chat/telegram) |
-| [WhatsApp Business](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/chat/whatsapp-business) |
-| [Zulip](https://github.com/novuhq/novu/tree/next/packages/providers/src/lib/chat/zulip) |
+> **Why i used SSM instead of a Bastion Host?**
+>
+> A common approach when i was learning aws i saw was to deploy a bastion host and SSH into private instances through it. While this works, it introduces additional infrastructure and cost.
+>
+> Even when a bastion host is stopped, you may still incur charges for resources such as EBS volumes and Elastic IP addresses(if configured).
+>
+> AWS Systems Manager provides secure shell access to private instances without exposing SSH ports to the internet, managing SSH keys, or maintaining a dedicated bastion host.
 
-</details>
+### 8. Configure the Kubernetes Cluster
 
-<details>
-<summary><strong>📥 In-App</strong> (1 provider)</summary>
+Once all nodes are available through AWS Systems Manager, navigate to the `ansible/` directory and execute:
 
-| Provider |
-| --- |
-| [Novu Inbox](https://docs.novu.co/inbox/react/get-started?utm_source=github&utm_medium=repository&utm_campaign=inbox-channel-link) |
+```bash
+ansible-playbook playbooks/site.yaml
+```
 
-</details>
+This playbook is responsible for configuring the cluster and installing the required dependencies on the provisioned instances.
 
-## 📋 Read Our Code Of Conduct
+> **Note**
+>
+> The playbooks have been written with idempotency in mind wherever practical. However, certain operations may not be fully idempotent and can fail or behave unexpectedly when re-executed on an already configured environment.
 
-Before you begin coding and collaborating, please read our [Code of Conduct](https://github.com/novuhq/novu/blob/main/CODE_OF_CONDUCT.md) thoroughly to understand the standards (that you are required to adhere to) for community engagement. As part of our open-source community, we hold ourselves and other contributors to a high standard of communication. As a participant and contributor to this project, you agree to abide by our [Code of Conduct](https://github.com/novuhq/novu/blob/main/CODE_OF_CONDUCT.md).
+### 9. Install Kubernetes Add-ons
 
-## 💻 Need Help?
+At this point, a few Kubernetes add-ons must be installed manually from the control plane node.
 
-We are more than happy to help you. If you are getting any errors or facing problems while working on this project, join our [Discord server](https://discord.novu.co) and ask for help. We are open to discussing anything related to the project.
+Start an SSM session to the control node. Throughout this guide, I will use `bash` for examples, but feel free to use your preferred shell.
 
-## 🔗 Links
+Add the required Helm repositories:
 
-- [Home page](https://novu.co?utm_source=github&utm_medium=readme&utm_campaign=main-link)
-- [Contribution guidelines](https://github.com/novuhq/novu/blob/main/CONTRIBUTING.md)
-- [Run Novu locally](https://docs.novu.co/community/run-in-local-machine?utm_source=github&utm_medium=readme&utm_campaign=novu-locally-link)
+```bash
+helm repo add eks https://aws.github.io/eks-charts
+helm repo add aws-ebs-csi-driver https://kubernetes-sigs.github.io/aws-ebs-csi-driver
+helm repo update
+```
 
-## 🛡️ License
+Install the AWS EBS CSI Driver:
 
-Novu is a commercial open source company, which means some parts of this open source repository require a commercial license. The concept is called "Open Core," where the core technology is fully open source, licensed under MIT license, and the enterprise code is covered under a commercial license ("/enterprise" Enterprise Edition). Enterprise features are built by the core engineering team of Novu which is hired in full-time.
+```bash
+helm upgrade --install aws-ebs-csi-driver \
+  aws-ebs-csi-driver/aws-ebs-csi-driver \
+  -n kube-system
+```
 
-The following modules and folders are licensed under the enterprise license:
+> **Note**
+>
+> The IAM roles and policies required by the AWS EBS CSI Driver and AWS Load Balancer Controller are provisioned automatically by Terraform. No additional IAM configuration is required.
 
-- `enterprise` folder at the root of the project and all of their subfolders and modules
-- `apps/web/src/ee` folder and all of their subfolders and modules
-- `apps/dashboard/src/ee` folder and all of their subfolders and modules
+### 10. Clone the Repository
 
-## 💪 Thanks to all of our contributors
+Clone this repository (or your own fork) onto the control node and navigate into novu-helm-chart
 
-Thanks a lot for spending your time helping Novu grow. Keep rocking 🥂
+The remaining cluster components and application resources will be deployed from this repository.
 
-<a href="https://novu.co/contributors?utm_source=github" target="_blank" rel="noopener noreferrer">
-  <img src="https://contributors-img.web.app/image?repo=novuhq/novu" alt="Contributors"/>
-</a>
 
-The beatiful header animation was contributed by [LottieFiles](https://lottiefiles.com/) ❤️
+### 11. Deploy Novu
+
+Before deploying Novu, ensure that you own a domain name and have access to its DNS settings.
+
+You must be able to modify the domain's nameserver (NS) records or DNS records through your domain registrar or DNS provider. This will be required later when configuring Route 53, custom domains, and TLS certificates.
+
+Update the following values in `values.yaml` to match your domain:
+
+```yaml
+API_ROOT_URL
+FRONT_BASE_URL
+VITE_API_HOSTNAME
+VITE_WEBSOCKET_HOSTNAME
+```
+
+Example:
+
+```yaml
+API_ROOT_URL: "https://api.example.com"
+FRONT_BASE_URL: "https://example.com"
+VITE_API_HOSTNAME: "https://api.example.com"
+VITE_WEBSOCKET_HOSTNAME: "wss://ws.example.com"
+```
+
+If you do not plan to use HTTPS, use `http://` and `ws://` instead.
+
+> **HTTPS Configuration**
+>
+> If you do not intend to use HTTPS, remove the following annotations from the `novu-alb` Ingress manifest:
+>
+> ```yaml
+> alb.ingress.kubernetes.io/certificate-arn
+> alb.ingress.kubernetes.io/ssl-redirect
+> ```
+>
+> These annotations are only required when using AWS Certificate Manager (ACM) for TLS termination on the Application Load Balancer.
+
+Deploy Novu:
+
+```bash
+helm upgrade --install novu . \
+  --namespace novu \
+  --create-namespace
+```
+
+Wait for all pods to become healthy before proceeding.
+
+### 12. Install AWS Load Balancer Controller
+
+Install the AWS Load Balancer Controller:
+
+```bash
+helm upgrade --install aws-load-balancer-controller \
+  eks/aws-load-balancer-controller \
+  --namespace kube-system \
+  --create-namespace \
+  --set clusterName=default \
+  --set region=<aws_region> \
+  --set vpcId=<vpc_id> \
+  --set serviceAccount.create=true
+```
+
+You can obtain the VPC ID from the AWS Console or Terraform outputs.
+
+> **Important**
+>
+> Ensure that `aws_region` matches the AWS region used by your Terraform deployment.
+>
+> For example, if Terraform provisioned the infrastructure in `us-east-1`, the controller must also be configured with `us-east-1`.
+>
+> A mismatched region can cause the controller to fail to discover AWS resources correctly, leading to ingress reconciliation failures and a surprisingly long debugging session. Ask me how I know. 😄
+
+After installation, verify that the controller is running:
+
+```bash
+kubectl get pods -n kube-system -l app.kubernetes.io/name=aws-load-balancer-controller
+```
+
+Once the controller is healthy, Kubernetes Ingress resources can automatically provision and manage AWS Application Load Balancers.
+
+### 13. Configure DNS
+
+Create a public hosted zone in Route 53 using the same domain configured in `values.yaml`.
+
+After the hosted zone is created, Route 53 will provide four nameserver (NS) records. Copy these values and update the nameserver settings at your domain registrar or DNS provider.
+
+DNS propagation may take some time depending on your provider.
+
+Once the hosted zone is active, create the following DNS records:
+
+| Record Name     | Type |
+| --------------- | ---- |
+| example.com     | A    |
+| api.example.com | A    |
+| ws.example.com  | A    |
+
+For each record:
+
+1. Enable **Alias**
+2. Select **Application and Classic Load Balancer**
+3. Choose the AWS region where the infrastructure was deployed
+4. Select the Application Load Balancer created by the AWS Load Balancer Controller
+
+All three records should point to the same ALB.
+
+After DNS propagation completes, the application should be accessible from the configured domain names.
+
+> **HTTPS (Optional)**
+>
+> If you plan to use HTTPS, request a certificate from AWS Certificate Manager (ACM) for your domain and subdomains before enabling the TLS-related annotations in the `novu-alb` Ingress resource.
+>
+> Example:
+>
+> * `example.com`
+> * `*.example.com`
+>
+> Once the certificate is issued, uncomment & update the `alb.ingress.kubernetes.io/certificate-arn` annotation with the ACM certificate ARN and redeploy the chart.

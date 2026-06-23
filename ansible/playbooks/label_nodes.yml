@@ -1,0 +1,49 @@
+# ---
+# - name: Label k3s worker nodes
+#   hosts: k3s_master
+#   become: true
+
+#   tasks:
+#     - name: Label app worker nodes
+#       ansible.builtin.command: >
+#         kubectl label node {{ item }} workload=app --overwrite
+#       loop: "{{ groups['k3s_workers_app'] }}"
+#       changed_when: false
+
+#     - name: Label data worker nodes
+#       ansible.builtin.command: >
+#         kubectl label node {{ item }} workload=data --overwrite
+#       loop: "{{ groups['k3s_workers_data'] }}"
+#       changed_when: false
+
+---
+- name: Label k3s worker nodes
+  hosts: k3s_master
+  become: true
+
+  tasks:
+    - name: Get current label for app workers
+      ansible.builtin.command:
+        cmd: kubectl get node {{ item }} -o jsonpath='{.metadata.labels.workload}'
+      register: app_labels
+      changed_when: false
+      loop: "{{ groups['k3s_workers_app'] }}"
+
+    - name: Label app worker nodes
+      ansible.builtin.command:
+        cmd: kubectl label node {{ item.item }} workload=app --overwrite
+      loop: "{{ app_labels.results }}"
+      when: item.stdout != "app"
+
+    - name: Get current label for data workers
+      ansible.builtin.command:
+        cmd: kubectl get node {{ item }} -o jsonpath='{.metadata.labels.workload}'
+      register: data_labels
+      changed_when: false
+      loop: "{{ groups['k3s_workers_data'] }}"
+
+    - name: Label data worker nodes
+      ansible.builtin.command:
+        cmd: kubectl label node {{ item.item }} workload=data --overwrite
+      loop: "{{ data_labels.results }}"
+      when: item.stdout != "data"

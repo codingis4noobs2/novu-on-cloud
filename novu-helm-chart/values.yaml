@@ -1,0 +1,183 @@
+replicaCount: 2
+
+nameOverride: ""
+fullnameOverride: ""
+
+imagePullSecrets: []
+
+registry: "ghcr.io"
+
+services:
+  api:
+    replicas: 2
+    image:
+      repository: "novuhq/novu/api"
+      tag: "3.17.0"
+      pullPolicy: IfNotPresent
+    service:
+      type: NodePort
+      port: 3000
+    resources: {}
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+  ws:
+    replicas: 2
+    image:
+      repository: "novuhq/novu/ws"
+      tag: "3.17.0"
+      pullPolicy: IfNotPresent
+    service:
+      type: NodePort
+      port: 3002
+    resources: {}
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+  worker:
+    replicas: 2
+    image:
+      repository: "novuhq/novu/worker"
+      tag: "3.17.0"
+      pullPolicy: IfNotPresent
+    service:
+      type: ClusterIP
+      port: 3004
+    resources: {}
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+  dashboard:
+    replicas: 2
+    image:
+      repository: "novuhq/novu/dashboard"
+      tag: "3.17.0"
+      pullPolicy: IfNotPresent
+    service:
+      type: NodePort
+      port: 4000
+    resources: {}
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+
+appConfig:
+  NODE_ENV: production
+  API_ROOT_URL: "https://api.novuoncloud.dpdns.org"
+  FRONT_BASE_URL: "https://novuoncloud.dpdns.org"
+  API_CONTEXT_PATH: ""
+  WS_CONTEXT_PATH: ""
+  VITE_API_HOSTNAME: "https://api.novuoncloud.dpdns.org"
+  VITE_WEBSOCKET_HOSTNAME: "wss://ws.novuoncloud.dpdns.org"
+  S3_LOCAL_STACK: "false"
+  S3_BUCKET_NAME: ""
+  S3_REGION: "us-east-1"
+  MONGO_MIN_POOL_SIZE: "10"
+  MONGO_MAX_POOL_SIZE: "50"
+  REDIS_DB_INDEX: "2"
+  SUBSCRIBER_WIDGET_JWT_EXPIRATION_TIME: "15 days"
+  SENTRY_DSN: ""
+  NEW_RELIC_ENABLED: "false"
+  NEW_RELIC_APP_NAME: "novu"
+  MONGO_AUTO_CREATE_INDEXES: "true"
+  IS_API_IDEMPOTENCY_ENABLED: "true"
+  IS_API_RATE_LIMITING_ENABLED: "true"
+  IS_NEW_MESSAGES_API_RESPONSE_ENABLED: "true"
+  IS_V2_ENABLED: "true"
+  IS_SELF_HOSTED: "true"
+  BROADCAST_QUEUE_CHUNK_SIZE: "100"
+  MULTICAST_QUEUE_CHUNK_SIZE: "100"
+  IS_EMAIL_INLINE_CSS_DISABLED: "false"
+  IS_USE_MERGED_DIGEST_ID_ENABLED: "false"
+
+secrets:
+  MONGO_INITDB_ROOT_USERNAME: "root"
+  MONGO_INITDB_ROOT_PASSWORD: "secret"
+  # Optional override. Leave empty to auto-generate.
+  MONGO_URL: ""
+  REDIS_PASSWORD: ""
+  AWS_ACCESS_KEY_ID: ""
+  AWS_SECRET_ACCESS_KEY: ""
+  JWT_SECRET: ""
+  STORE_ENCRYPTION_KEY: ""
+  NOVU_SECRET_KEY: ""
+  MONGODB_REPLICA_SET_KEY: ""
+  NEW_RELIC_LICENSE_KEY: ""
+
+storageClass:
+  create: true
+  name: "aws-ebs-csi-gp3"
+  provisioner: "ebs.csi.aws.com"
+  type: "gp3"
+  fsType: "ext4"
+  encrypted: "true"
+  reclaimPolicy: Retain
+  volumeBindingMode: WaitForFirstConsumer
+  allowVolumeExpansion: true
+
+localStorage:
+  # Temporary sandbox mode for clusters without AWS EBS CSI.
+  # This creates hostPath-backed static PVs for Redis and MongoDB.
+  enabled: false
+  storageClassName: "local-path"
+  basePath: "/tmp/novu"
+  reclaimPolicy: Delete
+  volumeBindingMode: WaitForFirstConsumer
+
+redis:
+  replicas: 2
+  image:
+    repository: "redis"
+    tag: "alpine"
+    pullPolicy: IfNotPresent
+  service:
+    port: 6379
+  auth:
+    enabled: false
+  persistence:
+    enabled: true
+    size: 8Gi
+    accessModes:
+      - ReadWriteOnce
+  resources: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  securityContext:
+    runAsUser: 1001
+    runAsGroup: 1001
+  podSecurityContext:
+    fsGroup: 1001
+
+mongodb:
+  replicas: 2
+  image:
+    repository: "mongo"
+    tag: "8.0.17"
+    pullPolicy: IfNotPresent
+  service:
+    port: 27017
+  replicaSet:
+    enabled: true
+    name: rs0
+  persistence:
+    enabled: true
+    size: 20Gi
+    accessModes:
+      - ReadWriteOnce
+  resources: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  initJob:
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+
+podAnnotations: {}
+podSecurityContext: {}
+securityContext: {}
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

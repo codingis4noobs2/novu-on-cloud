@@ -1,0 +1,4 @@
+- ansible.builtin.import_playbook: common.yml
+- ansible.builtin.import_playbook: k3s_master.yml
+- ansible.builtin.import_playbook: k3s_workers.yml
+- ansible.builtin.import_playbook: label_nodes.yml

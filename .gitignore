@@ -135,3 +135,8 @@ demos/agent-chat-demo/next-env.d.ts
 *.sqlite-shm
 *.sqlite-wal
 **/.wrangler/tmp/**
+
+hosts.ini
+.terraform/
+*.tfstate
+*.tfstate.*

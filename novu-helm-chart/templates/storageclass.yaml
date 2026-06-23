@@ -1,0 +1,16 @@
+{{- if and .Values.storageClass.create (not .Values.localStorage.enabled) }}
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: {{ .Values.storageClass.name | quote }}
+  labels:
+    {{- include "novu.labels" . | nindent 4 }}
+provisioner: {{ .Values.storageClass.provisioner | quote }}
+parameters:
+  type: {{ .Values.storageClass.type | quote }}
+  fsType: {{ .Values.storageClass.fsType | quote }}
+  encrypted: {{ .Values.storageClass.encrypted | quote }}
+reclaimPolicy: {{ .Values.storageClass.reclaimPolicy }}
+volumeBindingMode: {{ .Values.storageClass.volumeBindingMode }}
+allowVolumeExpansion: {{ .Values.storageClass.allowVolumeExpansion }}
+{{- end }}
