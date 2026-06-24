@@ -134,6 +134,7 @@ This playbook is responsible for configuring the cluster and installing the requ
 > **Note**
 >
 > The playbooks have been written with idempotency in mind wherever practical. However, certain operations may not be fully idempotent and can fail or behave unexpectedly when re-executed on an already configured environment.
+> ArgoCD installation is optional; you can remove or comment out the task if you don't want ArgoCD.
 
 ### 9. Install Kubernetes Add-ons
 
@@ -285,3 +286,13 @@ After DNS propagation completes, the application should be accessible from the c
 > * `*.example.com`
 >
 > Once the certificate is issued, uncomment & update the `alb.ingress.kubernetes.io/certificate-arn` annotation with the ACM certificate ARN and redeploy the chart.
+
+## ArgoCD
+If you have choose to keep ArgoCD, you can access the web UI via 
+```
+aws ssm start-session \
+  --target <control instance id> \
+  --document-name AWS-StartPortForwardingSessionToRemoteHost \
+  --parameters '{"host":["<argocd-server-svc-ip>"],"portNumber":["443"],"localPortNumber":["8080"]}'
+```
+Username will be admin & password will be the output of `kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d`
