@@ -19,7 +19,7 @@ This project provisions a highly available self-hosted Novu deployment on AWS us
 > Failure to clean up resources such as EC2 instances, EBS volumes, NAT Gateways, Load Balancers, and Route 53 hosted zones will definitely result in unexpected AWS charges.
 
 ## Architecture Diagram
-Will upload soon!
+![Architecture](.github/assets/architecture.png)
 
 ## Prerequisites
 
